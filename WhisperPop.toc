@@ -1,0 +1,24 @@
+﻿## Interface: 11508, 11509
+## Title: WhisperPop
+## Title-zhCN: 密语管理
+## Title-zhTW: 密語管理
+## Notes: |cffbc8f8fSecret language reminding addons.|r
+## Notes-zhCN: |cff00ff00WhisperPop|r|n|cffbc8f8f记录并提示玩家密语聊天信息。|r
+## Notes-zhTW: |cff00ff00WhisperPop|r|n|cffbc8f8f記錄并提示玩家密語聊天信息。|r
+## Author: Abin (standalone extraction)
+## Version: 3.1-standalone
+## SavedVariables: WhisperPopDB
+## X-Category: Chat
+
+Localization.lua
+
+VirtualScrollList-1.0.lua
+
+WhisperPop.lua
+MainFrame.lua
+MessageFrame.lua
+OptionFrame.lua
+WhisperPop.xml
+
+# --- Standalone auto-enable ---
+enable.lua
