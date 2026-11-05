@@ -364,7 +364,7 @@ list:SetScript("OnEvent", function (self, event, text, name, _, _, _, status, _,
 
 	-- Whenever we recieve a whisper message, we check if the person is already in list, if it is, we bring it to top
 	local inform = event == "CHAT_MSG_WHISPER_INFORM" or event == "CHAT_MSG_BN_WHISPER_INFORM"
-	local timeStamp = "|cffffd200"..os.date().."|r"
+	local timeStamp = "|cffffd200"..date().."|r"
 	-- local timeStamp = "|cffffd200"..strsub(date(), 10, 17).."|r"
 	local reading = WhisperPop.messageFrame:IsReading() == name
 	local findData = (bnFriend and BNguid and BNguid > 0) and BNguid or name
@@ -391,7 +391,7 @@ list:SetScript("OnEvent", function (self, event, text, name, _, _, _, status, _,
 		list:InsertData(data, 1)
 	end
 
-	table.insert(data.messages, { text = text, time = timeStamp, timeraw = os.time(), inform = inform })
+	table.insert(data.messages, { text = text, time = timeStamp, timeraw = time(), inform = inform })
 
 	if inform then
 		-- Replying a person removes the "new" mark from him

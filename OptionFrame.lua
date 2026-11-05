@@ -141,7 +141,7 @@ frame:SetScript("OnEvent", function(self, event, addonName)
 
 		if WhisperPop.db.keep then
             WhisperPopFrameList.listData = WhisperPop.db.keepDatas or WhisperPopFrameList.listData;
-            local keepTime = os.time() - 60*60*24*9;
+            local keepTime = time() - 60*60*24*9;
             for i = #WhisperPopFrameList.listData, 1, -1 do
                 local messages = WhisperPopFrameList.listData[i].messages
                 while messages and messages[1] and (not messages[1].timeraw or messages[1].timeraw < keepTime) do
