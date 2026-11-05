@@ -1,4 +1,4 @@
-﻿------------------------------------------------------------
+------------------------------------------------------------
 -- OptionFrame.lua
 --
 -- Abin
@@ -117,20 +117,22 @@ local clearButton = CreateOptionButton("Clear", "Interface\\Icons\\Spell_Shadow_
 function clearButton:OnClick()
 	WhisperPop.list:Clear()
 	WhisperPop:OnListUpdate()
-	WhisperPopOutButton.flashMode = false;
-	WhisperPopOutButton.flash:Hide();
+	if WhisperPopOutButton and WhisperPopOutButton.flash then
+		WhisperPopOutButton.flashMode = false;
+		WhisperPopOutButton.flash:Hide();
+	end
 end
 
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_LOGOUT")
-frame:SetScript("OnEvent", function(self, event,...)
+frame:SetScript("OnEvent", function(self, event, addonName)
 	if event == "PLAYER_LOGOUT" then
         if WhisperPop.db.keep then
             WhisperPop.db.keepDatas = WhisperPopFrameList.listData
         else
             WhisperPop.db.keepDatas = nil
         end
-	elseif event == "ADDON_LOADED" and select(1,...) == "WhisperPop" then
+	elseif event == "ADDON_LOADED" and addonName == "WhisperPop" then
 		if type(WhisperPopDB) ~= "table" then
 			WhisperPopDB = WhisperPop.db
 		else
@@ -139,7 +141,7 @@ frame:SetScript("OnEvent", function(self, event,...)
 
 		if WhisperPop.db.keep then
             WhisperPopFrameList.listData = WhisperPop.db.keepDatas or WhisperPopFrameList.listData;
-            local keepTime = time() - 60*60*24*9;
+            local keepTime = os.time() - 60*60*24*9;
             for i = #WhisperPopFrameList.listData, 1, -1 do
                 local messages = WhisperPopFrameList.listData[i].messages
                 while messages and messages[1] and (not messages[1].timeraw or messages[1].timeraw < keepTime) do
@@ -153,11 +155,12 @@ frame:SetScript("OnEvent", function(self, event,...)
             WhisperPopFrameList.needRefresh = 1
         end
 
-		recOnlyButton:SetChecked(WhisperPop.db.receiveonly)
-		soundButton:SetChecked(WhisperPop.db.sound)
-		timeButton:SetChecked(WhisperPop.db.time)
-		helpButton:SetChecked(WhisperPop.db.help)
-		keepButton:SetChecked(WhisperPop.db.keep)
+		-- WoW Forever: SetChecked 需要 boolean，旧配置里是 1/nil。
+		recOnlyButton:SetChecked(not not WhisperPop.db.receiveonly)
+		soundButton:SetChecked(not not WhisperPop.db.sound)
+		timeButton:SetChecked(not not WhisperPop.db.time)
+		helpButton:SetChecked(not not WhisperPop.db.help)
+		keepButton:SetChecked(not not WhisperPop.db.keep)
 	end
 end)
 

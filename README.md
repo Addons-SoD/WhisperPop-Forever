@@ -1,4 +1,4 @@
-﻿# WhisperPop (Standalone)
+# WhisperPop (Standalone)
 
 A standalone whisper message manager addon extracted from the **BigFoot** addon pack. All dependencies on the BigFoot core have been removed so it can run independently.
 
@@ -53,6 +53,28 @@ WhisperPop/
 
 ## Compatibility
 
-- **Interface:** 11508, 11509 (Classic Era 1.15.x / Season of Discovery)
+- **Interface:** 16001 (World of Warcraft: Forever 1.60.1 / `wowf`; modern Mainline 12.1.5 API, Lua 5.1)
 - Battle.net whisper events (`CHAT_MSG_BN_WHISPER`) are registered but gracefully ignored if unavailable.
-- If porting to Retail (10.2.6+ / 11.x), further API adaptation may be required.
+- Battle.net info uses `C_BattleNet.GetAccountInfoByID` with a legacy `BNGetFriendInfoByID` fallback.
+- Secret player names / chat text are detected with `issecretvalue()` and replaced by localized placeholder text; secret values are never compared, concatenated or stored.
+- The message list uses a plain `ScrollingMessageFrame` instead of `ChatFrameTemplate`.
+- Whispers are opened through `ChatFrameUtil.OpenChat("/w target")`; the old `ChatFrame_*` globals are only fallbacks.
+- **Known limitation:** the old right-click `FriendsFrame_ShowBNDropdown` / `FriendsFrame_ShowDropdown` menus were removed from 12.x FrameXML. WhisperPop keeps guarded calls but falls back to doing nothing on Forever; left-click whisper, Shift-click who and Alt-click invite still work through `C_*` APIs.
+
+### Porting notes (Classic Era 11509 → Forever 16001)
+
+| Classic-only usage | Forever replacement |
+| --- | --- |
+| `strfind` / `strlower` / `gsub` / `gmatch` / `format` | `string.*` |
+| `tinsert` / `tremove` / `wipe` | `table.*` |
+| `floor` / `max` / `min` | `math.*` |
+| `date()` / `time()` | `os.date()` / `os.time()` |
+| `InviteUnit` | `C_PartyInfo.InviteUnit` |
+| `GetPlayerInfoByGUID` | `C_PlayerInfo.GetPlayerInfoByGUID` |
+| `BNGetFriendInfoByID` | `C_BattleNet.GetAccountInfoByID` |
+| `FriendsFrame_ShowBNDropdown` / `FriendsFrame_BattlenetInvite` | guarded calls with fallbacks |
+| `ChatFrame_SendTell` / `BNplayer:` link | `ChatFrameUtil.OpenChat("/w target")` |
+| `ChatFrameTemplate` | plain `ScrollingMessageFrame` + `ChatFontNormal` |
+| `UIPanelScroll*ButtonTemplate` | plain `Button` + chat scroll textures |
+
+No `COMBAT_LOG_EVENT_UNFILTERED`, spell/item/container/aura APIs are used by this addon, so no `C_Spell` / `C_Item` / `C_Container` / `C_UnitAuras` migration was required.

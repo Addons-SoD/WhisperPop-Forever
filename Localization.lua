@@ -1,4 +1,4 @@
-﻿------------------------------------------------------------
+------------------------------------------------------------
 -- Localization.lua
 --
 -- Abin
@@ -8,6 +8,8 @@
 -- Default(English)
 WHISPERPOP_LOCALE = {
 	["title"] = "WhisperPop",
+	["secret name"] = "<secret player>",
+	["secret message"] = "|cff808080<secret message hidden>|r",
 	["receive only"] = "Show received messages only",
 	["sound notifying"] = "Sound notifying",
 	["time"] = "Show time stamp",
@@ -36,6 +38,8 @@ if GetLocale() == "zhCN" then
 	-- 简体中文
 	WHISPERPOP_LOCALE = {
 		["title"] = "密语聊天",
+		["secret name"] = "<加密玩家>",
+		["secret message"] = "|cff808080<加密消息，已隐藏>|r",
 		["receive only"] = "仅显示接收到的消息",
 		["sound notifying"] = "声音提示",
 		["time"] = "显示时间标签",
@@ -64,6 +68,8 @@ elseif GetLocale() == "zhTW" then
 	-- 繁體中文
 	WHISPERPOP_LOCALE = {
 		["title"] = "密語聊天",
+		["secret name"] = "<加密玩家>",
+		["secret message"] = "|cff808080<加密訊息，已隱藏>|r",
 		["receive only"] = "僅顯示接收到的消息",
 		["sound notifying"] = "聲音提示",
 		["time"] = "顯示時間標簽",

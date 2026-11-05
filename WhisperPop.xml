@@ -1,12 +1,14 @@
-﻿<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/">
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/">
 
 	<Button name="WhisperPopOutButton" frameStrata="DIALOG" parent="UIParent">
 		<Size>
 			<AbsDimension x="32" y="32"/>
 		</Size>
 		<Anchors>
-			<Anchor point="BOTTOM" relativeTo="ChatFrameChannelButton" relativePoint="TOP">
-				<Offset><AbsDimension x="0" y="0"/></Offset>
+			<!-- WoW Forever: ChatFrameChannelButton may be absent. Anchor to the
+			     screen bottom first, then WP_UpdateButtonSide repositions it. -->
+			<Anchor point="BOTTOM" relativeTo="UIParent">
+				<Offset><AbsDimension x="0" y="100"/></Offset>
 			</Anchor>
 		</Anchors>
 		<Layers>
@@ -22,11 +24,16 @@
 				end
 			</OnLoad>
 			<OnClick>
-				PlaySound(SOUNDKIT.IG_CHAT_EMOTE_BUTTON);
-				if (WhisperPopFrame:IsShown()) then
-					WhisperPopFrame:Hide();
-				else
-					WhisperPopFrame:Show();
+				-- WoW Forever: SOUNDKIT entry may be absent; the main frame may not exist yet.
+				if SOUNDKIT and SOUNDKIT.IG_CHAT_EMOTE_BUTTON then
+					PlaySound(SOUNDKIT.IG_CHAT_EMOTE_BUTTON);
+				end
+				if WhisperPopFrame then
+					if (WhisperPopFrame:IsShown()) then
+						WhisperPopFrame:Hide();
+					else
+						WhisperPopFrame:Show();
+					end
 				end
 			</OnClick>
 			<OnEnter>

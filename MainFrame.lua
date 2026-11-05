@@ -1,4 +1,4 @@
-﻿------------------------------------------------------------
+------------------------------------------------------------
 -- MainFrame.lua
 --
 -- Abin
@@ -92,7 +92,7 @@ end)
 -- Main frame
 local frame = WhisperPop:CreateCommonFrame("WhisperPopFrame", UIParent, L["title"]..WhisperPop.version)
 WhisperPop.mainFrame = frame
-tinsert(UISpecialFrames, frame:GetName())
+table.insert(UISpecialFrames, frame:GetName())
 SetFrameMobile(frame)
 frame:SetToplevel(true)
 frame:SetFrameStrata("DIALOG")
@@ -127,7 +127,12 @@ end
 
 local function DeleteButton_OnClick(self)
 	WhisperPop.messageFrame:Hide()
-	list:RemoveData(list:FindData(self:GetParent().name, CompareData))
+	local data = self:GetParent().data
+	if data then
+		-- WoW Forever: BN 显示名可能来自 C_BattleNet，按 BNguid 删除更可靠。
+		local key = (data.BNguid and data.BNguid > 0) and data.BNguid or data.name
+		list:RemoveData(list:FindData(key, CompareData))
+	end
 	WhisperPop:OnListUpdate()
 end
 
@@ -159,16 +164,20 @@ local function DeleteButton_OnEnter(self)
 end
 
 local function WhisperPop_StartFlash()
-	WhisperPopOutButton.flashMode = true;
-	WhisperPopOutButton.mode = "OUT";
-	WhisperPopOutButton.flashTime = 0;
-	WhisperPopOutButton.timeToFade = 0.8;
-	WhisperPopOutButton.flash:Show();
+	local button = WhisperPopOutButton
+	if not button or not button.flash then return end
+	button.flashMode = true;
+	button.mode = "OUT";
+	button.flashTime = 0;
+	button.timeToFade = 0.8;
+	button.flash:Show();
 end
 
 local function WhisperPop_StopFlash()
-	WhisperPopOutButton.flashMode = false;
-	WhisperPopOutButton.flash:Hide();
+	local button = WhisperPopOutButton
+	if not button or not button.flash then return end
+	button.flashMode = false;
+	button.flash:Hide();
 end
 
 --如果还有被标记为new的消息 就不取消falsh
@@ -201,7 +210,8 @@ end
 
 function list:OnButtonUpdate(button, data)
 	if data.BNguid and data.BNguid > 0 then
-		button.name = select(2,BNGetFriendInfoByID(data.BNguid))
+		-- WoW Forever: 旧 BNGetFriendInfoByID 已移除，统一走 C_BattleNet。
+		button.name = WhisperPop:GetBNetName(data.BNguid) or data.name
 	else
 		button.name = data.name
 	end
@@ -218,7 +228,7 @@ end
 function list:OnButtonEnter(button, data)
 	local name;
 	if data.BNguid and data.BNguid > 0 then
-		name = select(2,BNGetFriendInfoByID(data.BNguid));
+		name = WhisperPop:GetBNetName(data.BNguid) or data.name;
 	else
 		name = data.name;
 	end
@@ -256,58 +266,108 @@ function list:OnButtonLeave(button, data)
 	WhisperPop.messageFrame:StartCounting()
 end
 
+-- WoW Forever: 打开密语输入框。使用 /w 目标统一处理普通玩家和 BattleTag，
+-- 避免依赖已变化的 BNplayer 链接格式（现为 name:accountID:lineID:chatType:chatTarget）。
+local function OpenWhisper(name)
+	-- 12.1.5 起 ChatFrame_* 全局函数被重组到 ChatFrameUtil 命名空间。
+	if ChatFrameUtil and type(ChatFrameUtil.OpenChat) == "function" then
+		local ok = pcall(ChatFrameUtil.OpenChat, "/w "..name)
+		if ok then return end
+	end
+	if type(ChatFrame_OpenChat) == "function" then
+		ChatFrame_OpenChat("/w "..name)
+	elseif type(ChatFrame_SendTell) == "function" then
+		ChatFrame_SendTell(name)
+	end
+end
+
 function list:OnButtonClick(button, data, flag)
-	local name,presenceID;
+	local name, presenceID;
 	if data.BNguid and data.BNguid > 0 then
-		name = select(2,BNGetFriendInfoByID(data.BNguid));
+		name = WhisperPop:GetBNetName(data.BNguid) or data.name;
 	else
 		name = data.name;
-		presenceID = BNet_GetBNetIDAccount(data.name)
+		presenceID = WhisperPop:GetBNetIDByName(data.name)
 	end
 	if flag == "RightButton" then
 		-- Right click brings up unit drop down menu
 		if data.bnFriend then
 			presenceID = presenceID or data.BNguid
-			FriendsFrame_ShowBNDropdown(name, 1, nil, "BN_WHISPER", _, nil, presenceID)
-		else
-			FriendsFrame_ShowDropdown(name, 1);
+			-- WoW Forever: 旧签名可能已调整，做能力探测并降级到普通玩家菜单。
+			local shown = presenceID and type(FriendsFrame_ShowBNDropdown) == "function"
+				and pcall(FriendsFrame_ShowBNDropdown, name, 1, nil, "BN_WHISPER", nil, nil, presenceID)
+			if not shown and type(FriendsFrame_ShowDropdown) == "function" then
+				pcall(FriendsFrame_ShowDropdown, name, 1)
+			end
+		elseif type(FriendsFrame_ShowDropdown) == "function" then
+			pcall(FriendsFrame_ShowDropdown, name, 1)
 		end
 	elseif flag == "LeftButton" then
 		if IsShiftKeyDown() then
 			-- Query player info
-			C_FriendList.SendWho("n-"..name)
+			if C_FriendList and C_FriendList.SendWho then
+				C_FriendList.SendWho("n-"..name)
+			elseif type(SendWho) == "function" then
+				SendWho("n-"..name)
+			end
 		elseif IsAltKeyDown() then
 			-- Invite
 			if data.bnFriend then
-				FriendsFrame_BattlenetInvite(nil, data.BNguid);
+				if type(BNInviteFriend) == "function" and data.BNguid then
+					pcall(BNInviteFriend, data.BNguid)
+				elseif type(FriendsFrame_BattlenetInvite) == "function" then
+					pcall(FriendsFrame_BattlenetInvite, nil, data.BNguid)
+				elseif C_PartyInfo and C_PartyInfo.InviteUnit then
+					pcall(C_PartyInfo.InviteUnit, name)
+				end
 			else
-				InviteUnit(name)
+				-- WoW Forever: InviteUnit 已移至 C_PartyInfo.InviteUnit。
+				if C_PartyInfo and C_PartyInfo.InviteUnit then
+					pcall(C_PartyInfo.InviteUnit, name)
+				elseif type(InviteUnit) == "function" then
+					pcall(InviteUnit, name)
+				end
 			end
 		else
-			if data.bnFriend then
-				presenceID = presenceID or data.BNguid
-				SetItemRef( "BNplayer:"..(name)..":"..presenceID, ("|Hplayer:%1$s|h[%1$s]|h"):format(name), "LeftButton" )
-			else
-				ChatFrame_SendTell(name)
-			end
+			OpenWhisper(name)
 		end
 	end
 end
 
 list:SetScript("OnEvent", function (self, event, text, name, _, _, _, status, _, _, _, _, _, guid, BNguid)
-	if type(text) ~= "string" or type(name) ~= "string" or (BNguid == 0 and (type(guid) ~= "string")) or WhisperPop:IsIgnoredMessage(text) or status == "DEV" then
+	local bnFriend = event == "CHAT_MSG_BN_WHISPER" or event == "CHAT_MSG_BN_WHISPER_INFORM"
+
+	-- WoW Forever: 聊天参数可能是 secret value，必须先探测再 type()/比较。
+	local textSecret, nameSecret = WhisperPop:IsSecret(text), WhisperPop:IsSecret(name)
+	if WhisperPop:IsSecret(status) then status = nil end
+	if WhisperPop:IsSecret(guid) then guid = nil end
+	if WhisperPop:IsSecret(BNguid) then BNguid = nil end
+	if type(status) ~= "string" then status = nil end
+	if type(guid) ~= "string" then guid = nil end
+	if type(BNguid) ~= "number" then BNguid = nil end
+
+	if textSecret then text = WhisperPop:SanitizeText(text) end
+	if nameSecret then name = WhisperPop:SanitizeName(name) end
+
+	if type(text) ~= "string" or type(name) ~= "string" then
 		return
 	end
-	name = Ambiguate(name, "none")
+	if WhisperPop:IsIgnoredMessage(text) or status == "DEV" then
+		return
+	end
 
-	local bnFriend = event == "CHAT_MSG_BN_WHISPER" or event == "CHAT_MSG_BN_WHISPER_INFORM"
+	-- WoW Forever: Ambiguate 仍然存在，但做能力探测以防后续移除。
+	if type(Ambiguate) == "function" then
+		local ok, shortName = pcall(Ambiguate, name, "none")
+		if ok and shortName then name = shortName end
+	end
 
 	-- Whenever we recieve a whisper message, we check if the person is already in list, if it is, we bring it to top
 	local inform = event == "CHAT_MSG_WHISPER_INFORM" or event == "CHAT_MSG_BN_WHISPER_INFORM"
-	local timeStamp = "|cffffd200"..date().."|r"
+	local timeStamp = "|cffffd200"..os.date().."|r"
 	-- local timeStamp = "|cffffd200"..strsub(date(), 10, 17).."|r"
 	local reading = WhisperPop.messageFrame:IsReading() == name
-	local findData = BNguid > 0 and BNguid or name
+	local findData = (bnFriend and BNguid and BNguid > 0) and BNguid or name
 	local idx = list:FindData(findData, CompareData)
 	local data = list:GetData(idx)
 	if data then
@@ -318,19 +378,20 @@ list:SetScript("OnEvent", function (self, event, text, name, _, _, _, status, _,
 			WhisperPop.messageFrame:UpdateHeight()
 		end
 	else
+		local class = WhisperPop:GetClassByGUID(guid)
 		data = { name = name, class = class, messages = {}, bnFriend = bnFriend } -- Person not in list, create a new record for him
 		if bnFriend then
 			data.class = "BN"
-			data.BNguid = BNguid
+			if BNguid and BNguid > 0 then
+				data.BNguid = BNguid
+			end
 		elseif status == "GM" then
 			data.class = "GM"
-		elseif guid ~= "" and type(guid) == "string" then
-			data.class = select(2, GetPlayerInfoByGUID(guid))
 		end
 		list:InsertData(data, 1)
 	end
 
-	tinsert(data.messages, { text = text, time = timeStamp, timeraw = time(), inform = inform })
+	table.insert(data.messages, { text = text, time = timeStamp, timeraw = os.time(), inform = inform })
 
 	if inform then
 		-- Replying a person removes the "new" mark from him
@@ -361,6 +422,7 @@ end)
 -----------------------------------
 
 function WhisperPopOutButton_OnUpdate(self, elapsed)
+	if not self.flash then return end
 	if (self.flashMode) then
 		self.flashTime = self.flashTime + elapsed;
 		if (self.mode == "IN") then
@@ -393,20 +455,23 @@ function WhisperPopOutButton_OnUpdate(self, elapsed)
 end
 
 function WP_UpdateButtonSide(chatFrame)
-	if not chatFrame then return end
+	if not chatFrame or not WhisperPopOutButton then return end
 	local chatFrameHeight = chatFrame:GetHeight() or 0;
 	local bottomDist = chatFrame:GetBottom() or 0;
-	local screenHeight = GetScreenHeight() or 0;
+	local screenHeight = (type(GetScreenHeight) == "function" and GetScreenHeight()) or 0;
 	if ( bottomDist > 0 and screenHeight > 0 and (bottomDist+chatFrameHeight/2) > screenHeight/2 ) then
 		if ChatFrame1ButtonFrameBottomButton then WhisperPopOutButton:ClearAllPoints();
 		WhisperPopOutButton:SetPoint("TOP",ChatFrame1ButtonFrameBottomButton,"BOTTOM") end
 	else
 		if FriendsMicroButton then WhisperPopOutButton:ClearAllPoints();
-		WhisperPopOutButton:SetPoint("BOTTOM",FriendsMicroButton,"TOP") end
+		WhisperPopOutButton:SetPoint("BOTTOM",FriendsMicroButton,"TOP")
+		elseif ChatFrame1ButtonFrame then WhisperPopOutButton:ClearAllPoints();
+		WhisperPopOutButton:SetPoint("BOTTOM",ChatFrame1ButtonFrame,"TOP") end
 	end
 end
 
-if FCF_UpdateButtonSide then hooksecurefunc("FCF_UpdateButtonSide",function(frame)
+-- WoW Forever: FCF_UpdateButtonSide 可能不存在，先做存在性探测。
+if type(FCF_UpdateButtonSide) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc("FCF_UpdateButtonSide",function(frame)
 	if ( frame == DEFAULT_CHAT_FRAME ) then
 		WP_UpdateButtonSide(frame);
 	end
@@ -418,13 +483,13 @@ function WhisperPop_Toggle(switch)
 		list:RegisterEvent("CHAT_MSG_WHISPER_INFORM")
 		list:RegisterEvent("CHAT_MSG_BN_WHISPER")
 		list:RegisterEvent("CHAT_MSG_BN_WHISPER_INFORM")
-		WhisperPopOutButton:Show();
+		if WhisperPopOutButton then WhisperPopOutButton:Show() end;
 	else
 		list:UnregisterEvent("CHAT_MSG_WHISPER")
 		list:UnregisterEvent("CHAT_MSG_WHISPER_INFORM")
 		list:UnregisterEvent("CHAT_MSG_BN_WHISPER")
 		list:UnregisterEvent("CHAT_MSG_BN_WHISPER_INFORM")
 		frame:Hide();
-		WhisperPopOutButton:Hide();
+		if WhisperPopOutButton then WhisperPopOutButton:Hide() end;
 	end
 end

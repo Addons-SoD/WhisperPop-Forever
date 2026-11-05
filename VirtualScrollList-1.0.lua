@@ -97,13 +97,19 @@ local function ScrollBar_Button_OnClick(self)
 end
 
 -- Create slider button: Up/Down
+-- WoW Forever: 不再依赖 UIPanelScroll*ButtonTemplate（模板可能被移除），
+-- 直接用聊天滚动按钮的贴图创建普通 Button。
 local function ScrollBar_CreateScrollButton(self, value)
-	local button = CreateFrame("Button", self:GetName()..value.."Button", self, "UIPanelScroll"..value.."ButtonTemplate")
+	local button = CreateFrame("Button", self:GetName()..value.."Button", self)
 	button.value = value == "Up" and -1 or 1
 	self[value] = button
 	button:SetWidth(16)
 	button:SetHeight(14)
 	button:SetPoint(value == "Up" and "TOP" or "BOTTOM")
+	button:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIcon-Scroll"..value.."-Up")
+	button:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIcon-Scroll"..value.."-Down")
+	button:SetDisabledTexture("Interface\\ChatFrame\\UI-ChatIcon-Scroll"..value.."-Disabled")
+	button:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
 	button:Disable()
 	button:SetScript("OnClick", ScrollBar_Button_OnClick)
 end
@@ -208,7 +214,7 @@ local function Frame_CreateListButton(self, id)
 		button:SetPoint("TOPRIGHT", self.scrollBar, "TOPLEFT")
 	end
 
-	tinsert(self.listButtons, button)
+	table.insert(self.listButtons, button)
 	SafeCall(self.OnButtonCreated, self, button, id)
 
 	button:HookScript("OnEnter", ListButton_OnEnter)
@@ -285,10 +291,10 @@ local function Frame_RefreshContents(self)
 	local slider = self.slider
 	local maxButtons = self.maxButtons
 	local dataCount = #(self.listData)
-	local range = max(0, dataCount - maxButtons)
+	local range = math.max(0, dataCount - maxButtons)
 
 	if range > 0 then
-		slider.thumb:SetHeight(max(6, slider:GetHeight() * (maxButtons / dataCount)))
+		slider.thumb:SetHeight(math.max(6, slider:GetHeight() * (maxButtons / dataCount)))
 		scrollBar:SetWidth(14)
 		scrollBar:Show()
 	else
@@ -343,8 +349,8 @@ end
 
 local function Frame_InsertData(self, data, position)
 	local limit = #(self.listData) + 1
-	position = type(position) == "number" and min(limit, max(1, floor(position))) or limit
-	tinsert(self.listData, position, EncodeData(data))
+	position = type(position) == "number" and math.min(limit, math.max(1, math.floor(position))) or limit
+	table.insert(self.listData, position, EncodeData(data))
 
 	if self.selection and self.selection >= position then
 		self.selection = self.selection + 1
@@ -358,10 +364,10 @@ end
 local function Frame_RemoveData(self, position)
 	local data
 	if type(position) == "number" then
-		data = tremove(self.listData, position)
+		data = table.remove(self.listData, position)
 	else
 		position = #(self.listData)
-		data = tremove(self.listData)
+		data = table.remove(self.listData)
 	end
 
 	if not data then
@@ -390,7 +396,7 @@ local function Frame_ShiftData(self, position1, position2)
 		return
 	end
 
-	tinsert(self.listData, position2, tremove(self.listData, position1))
+	table.insert(self.listData, position2, table.remove(self.listData, position1))
 
 	if self.selection then
 		local selection = self.selection
@@ -464,7 +470,9 @@ local function Frame_UpdateData(self, position)
 end
 
 local function Frame_Clear(self)
-	wipe(self.listData)
+	for i = #self.listData, 1, -1 do
+		self.listData[i] = nil
+	end
 	Frame_SetScrollOffset(self, 0)
 	if self.selection then
 		self.selection = nil
@@ -497,7 +505,7 @@ local function Frame_OnMouseWheel(self, value)
 	local slider = self.slider
 	local _, range = slider:GetMinMaxValues()
 	if range > 0 then
-		slider:SetValue(slider:GetValue() - max(1, range / 10) * value)
+		slider:SetValue(slider:GetValue() - math.max(1, range / 10) * value)
 	end
 end
 
@@ -510,7 +518,7 @@ end
 -- Create the scroll list frame
 function UICreateVirtualScrollList(name, parent, maxButtons, selectable, buttonTemplate)
 	if type(name) ~= "string" then
-		error(format("bad argument #1 to 'UICreateVirtualScrollList' (string expected, got %s)", type(name)))
+		error(string.format("bad argument #1 to 'UICreateVirtualScrollList' (string expected, got %s)", type(name)))
 		return
 	end
 
@@ -521,7 +529,7 @@ function UICreateVirtualScrollList(name, parent, maxButtons, selectable, buttonT
 	end
 
 	frame:EnableMouseWheel(true)
-	frame.maxButtons = type(maxButtons) == "number" and max(1, floor(maxButtons)) or 1
+	frame.maxButtons = type(maxButtons) == "number" and math.max(1, math.floor(maxButtons)) or 1
 	frame.selectable = selectable
 	frame.buttonTemplate = type(buttonTemplate) == "string" and buttonTemplate or nil
 	frame.listButtons = {}

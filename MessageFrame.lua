@@ -24,19 +24,19 @@ label:SetPoint("TOPLEFT", INDENT_LEFT, -5)
 label:SetPoint("TOPRIGHT", -INDENT_RIGHT, -5)
 
 -- The ScrollingMessageFrame that displays message text lines
-local list = CreateFrame("ScrollingMessageFrame", "WhisperPopScrollingMessageFrame", frame, "ChatFrameTemplate")
+-- WoW Forever: 不再套用 ChatFrameTemplate（其 OnLoad 会注册聊天事件并可能依赖已变的
+-- ChatFrame 全局），改用裸 ScrollingMessageFrame + 显式字体，功能不变。
+local list = CreateFrame("ScrollingMessageFrame", "WhisperPopScrollingMessageFrame", frame)
 list:SetPoint("TOPLEFT", label, "BOTTOMLEFT")
 list:SetWidth(LIST_WIDTH)
 list:Show()
+if ChatFontNormal then list:SetFontObject(ChatFontNormal) end
 list:SetFading(false)
 list:SetMaxLines(1000)
 list:SetJustifyH("LEFT")
 list:SetIndentedWordWrap(false)
 list:SetFrameStrata("DIALOG")
-list:SetScript("OnLoad", nil)
-list:SetScript("OnEvent", nil)
-list:SetScript("OnUpdate", nil)
-list:UnregisterAllEvents()
+if list.SetHyperlinksEnabled then list:SetHyperlinksEnabled(true) end
 
 -- A hidden FontString to determine height of every message text
 local totalHeight = 0
@@ -81,7 +81,7 @@ function frame:UpdateHeight()
 		totalHeight = MESSAGE_MAX_HEIGHT
 	end
 
-	self:SetHeight(max(totalHeight, MESSAGE_MIN_HEIGHT) + MESSAGE_ADD_HEIGHT + 2)
+	self:SetHeight(math.max(totalHeight, MESSAGE_MIN_HEIGHT) + MESSAGE_ADD_HEIGHT + 2)
 	list:SetHeight(totalHeight + 2)
 end
 
@@ -100,11 +100,14 @@ function frame:AddMessage(timeStamp, text, inform, bnFriend)
 		r, g, b = 1, 0.5, 1
 	end
 
+	-- WoW Forever: 聊天图标表可能缺失，缺失时保留原文本；同时改用 string.* 标准库。
 	local term, tag
-	for tag in gmatch(text, "%b{}") do
-		term = strlower(gsub(tag, "[{}]", ""))
-		if ICON_TAG_LIST[term] and ICON_LIST[ICON_TAG_LIST[term]] then
-			text = gsub(text, tag, ICON_LIST[ICON_TAG_LIST[term]] .. "0|t")
+	if ICON_TAG_LIST and ICON_LIST then
+		for tag in string.gmatch(text, "%b{}") do
+			term = string.lower((string.gsub(tag, "[{}]", "")))
+			if ICON_TAG_LIST[term] and ICON_LIST[ICON_TAG_LIST[term]] then
+				text = string.gsub(text, tag, ICON_LIST[ICON_TAG_LIST[term]] .. "0|t")
+			end
 		end
 	end
 
@@ -138,14 +141,14 @@ function frame:SetData(class, name, messages, bnFriend)
 end
 
 frame:SetScript("OnUpdate", function(self)
-	if self.hideTime and GetTime() > self.hideTime then
+	if self.hideTime and GetTime() > self.hideTime then -- GetTime 仍存在于 WoW Forever
 		self.hideTime = nil
 		self:Hide()
 	end
 end)
 
 function frame:StartCounting()
-	self.hideTime = GetTime() + COUNTING_TIME
+	self.hideTime = GetTime() + COUNTING_TIME -- GetTime 仍存在于 WoW Forever
 end
 
 function frame:StopCounting()

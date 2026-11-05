@@ -1,4 +1,4 @@
-﻿## Interface: 11508, 11509
+## Interface: 16001
 ## Title: WhisperPop
 ## Title-zhCN: 密语管理
 ## Title-zhTW: 密語管理
