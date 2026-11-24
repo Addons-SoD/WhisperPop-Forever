@@ -5,7 +5,9 @@
 -- 2010-9-28
 ------------------------------------------------------------
 
-local FRAME_WIDTH = 320
+-- WoW Forever: widened together with the player list so the message panel still
+-- reads comfortably next to the (now 360px) player list.
+local FRAME_WIDTH = 480
 local INDENT_LEFT = 8
 local INDENT_RIGHT = 28
 local LIST_WIDTH = FRAME_WIDTH - INDENT_LEFT - INDENT_RIGHT
