@@ -99,7 +99,10 @@ end
 function WhisperPop:CreateCommonFrame(name, parent, titleText)
 	local frame = CreateFrame("Button", name, parent, "BackdropTemplate")
 	frame:Hide()
-	frame:SetWidth(165)
+	-- WoW Forever: character names on this realm are longer, so the player list
+	-- needs more horizontal room. The message frame overrides this width with
+	-- its own FRAME_WIDTH (320), so only the player list is affected.
+	frame:SetWidth(220)
 	frame:SetHeight(262)
 	frame:SetClampedToScreen(true)
 	frame:SetBackdrop({ bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background", tile = true, tileSize = 16, edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 16, insets = { left = 5, right = 5, top = 5, bottom = 5 } })
@@ -118,6 +121,28 @@ function WhisperPop:CreateCommonFrame(name, parent, titleText)
 	return frame
 end
 
+-- WoW Forever: character names are longer on this realm. Draw the name on one
+-- line and shorten it with an ellipsis when it does not fit, so it can never
+-- overlap the delete button. UTF-8 aware (CJK names must not be cut mid-byte).
+local function FitNameText(fontString, text)
+	if not fontString then return end
+	text = text or ""
+	fontString:SetText(text)
+	local avail = fontString:GetWidth()
+	if not avail or avail <= 0 then return end
+	if fontString:GetStringWidth() <= avail then return end
+	local chars = {}
+	for c in string.gmatch(text, "[%z\1-\127\194-\244][\128-\191]*") do
+		chars[#chars + 1] = c
+	end
+	local guard = 0
+	while #chars > 0 and fontString:GetStringWidth() > avail and guard < 512 do
+		chars[#chars] = nil
+		fontString:SetText(table.concat(chars) .. "…")
+		guard = guard + 1
+	end
+end
+
 function WhisperPop:CreatePlayerButton(button, name, parent)
 	if not button then
 		button = CreateFrame("Frame", name, parent)
@@ -132,6 +157,11 @@ function WhisperPop:CreatePlayerButton(button, name, parent)
 
 	button.nameText = button:CreateFontString(button:GetName().."NameText", "ARTWORK", "GameFontHighlightSmallLeft")
 	button.nameText:SetPoint("LEFT", button.classIcon, "RIGHT", 2, 0)
+	-- WoW Forever: keep long character names on a single line instead of letting
+	-- them wrap onto a second row (which made the list look folded).
+	button.nameText:SetWordWrap(false)
+	button.nameText:SetNonSpaceWrap(false)
+	button.nameText:SetMaxLines(1)
 
 	button.SetPlayer = function(self, class, name)
 		-- WoW Forever: 名字/职业也可能是 secret value，先降级为纯文本。
@@ -141,7 +171,7 @@ function WhisperPop:CreatePlayerButton(button, name, parent)
 		if WhisperPop:IsSecret(class) then
 			class = nil
 		end
-		self.nameText:SetText(name)
+		FitNameText(self.nameText, name)
 		local coords = CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[class]
 		if coords then
 			self.classIcon:SetTexture("Interface\\WorldStateFrame\\Icons-Classes")
