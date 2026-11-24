@@ -99,10 +99,11 @@ end
 function WhisperPop:CreateCommonFrame(name, parent, titleText)
 	local frame = CreateFrame("Button", name, parent, "BackdropTemplate")
 	frame:Hide()
-	-- WoW Forever: character names on this realm are longer, so the player list
-	-- needs more horizontal room. The message frame overrides this width with
-	-- its own FRAME_WIDTH (320), so only the player list is affected.
-	frame:SetWidth(220)
+	-- WoW Forever: a character name is "main name + space + sub name" on this
+	-- realm, so the player list needs more than twice the original width
+	-- (165 -> 360). The message frame overrides this width with its own
+	-- FRAME_WIDTH, so only the player list is affected by this value.
+	frame:SetWidth(360)
 	frame:SetHeight(262)
 	frame:SetClampedToScreen(true)
 	frame:SetBackdrop({ bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background", tile = true, tileSize = 16, edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 16, insets = { left = 5, right = 5, top = 5, bottom = 5 } })
