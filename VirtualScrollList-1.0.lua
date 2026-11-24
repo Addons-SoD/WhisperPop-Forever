@@ -273,9 +273,12 @@ local function Frame_UpdateList(self)
 			end
 
 			button.data = DecodeData(data)
-			SafeCall(self.OnButtonUpdate, self, button, button.data)
-			button:Hide()
+			-- WoW Forever: show the button BEFORE re-painting it. The old
+			-- Hide()/Show() pair right after OnButtonUpdate left the row blank
+			-- while the scrollbar thumb was being dragged (it only came back
+			-- after a mouse-wheel scroll queued another repaint).
 			button:Show()
+			SafeCall(self.OnButtonUpdate, self, button, button.data)
 		elseif button then
 			button.data = nil
 			button:Hide()
@@ -311,7 +314,18 @@ local function Frame_RefreshContents(self)
 end
 
 local function Slider_OnValueChanged(self, value)
-	Frame_UpdateList(self.listFrame)
+	local listFrame = self.listFrame
+	Frame_UpdateList(listFrame)
+	-- WoW Forever: while the thumb is being dragged the client may defer the
+	-- row repaint. Queue one more repaint on the next frame so the list is
+	-- never left blank until the user scrolls with the wheel.
+	if C_Timer and C_Timer.After and listFrame and listFrame.slider == self then
+		C_Timer.After(0, function()
+			if listFrame.slider and listFrame.listData then
+				Frame_UpdateList(listFrame)
+			end
+		end)
+	end
 end
 
 local function Frame_GetDataCount(self)
